@@ -71,7 +71,7 @@ fn skip_whitespace(input: Cursor) -> Cursor {
             if s.starts_with("//")
                 && (!s.starts_with("///") || s.starts_with("////"))
                 && !s.starts_with("//!")
-            {
+            { // 注释下面三行代码
                 let (cursor, _) = take_until_newline_or_eof(s);
                 s = cursor;
                 continue;
@@ -93,6 +93,7 @@ fn skip_whitespace(input: Cursor) -> Cursor {
         }
         match byte {
             b' ' | 0x09..=0x0d => {
+            // b' ' | 0x09 | 0x0b..=0x0d => {
                 s = s.advance(1);
                 continue;
             }
@@ -766,10 +767,10 @@ fn punct(input: Cursor) -> PResult<Punct> {
 }
 
 fn punct_char(input: Cursor) -> PResult<char> {
-    if input.starts_with("//") || input.starts_with("/*") {
-        // Do not accept `/` of a comment as a punct.
-        return Err(Reject);
-    }
+    // if input.starts_with("//") || input.starts_with("/*") {
+    //     // Do not accept `/` of a comment as a punct.
+    //     return Err(Reject);
+    // }
 
     let mut chars = input.chars();
     let first = match chars.next() {
@@ -778,6 +779,7 @@ fn punct_char(input: Cursor) -> PResult<char> {
             return Err(Reject);
         }
     };
+    // let recognized = "\n~!@#$%^&*-=+|;:,<.>/?'";
     let recognized = "~!@#$%^&*-=+|;:,<.>/?'";
     if recognized.contains(first) {
         Ok((input.advance(first.len_utf8()), first))
@@ -845,6 +847,13 @@ fn doc_comment_contents(input: Cursor) -> PResult<(&str, bool)> {
     } else if input.starts_with("/**") && !input.rest[3..].starts_with('*') {
         let (input, s) = block_comment(input)?;
         Ok((input, (&s[3..s.len() - 2], false)))
+    } else if input.starts_with("//") {
+        let input = input.advance(2);
+        let (input, s) = take_until_newline_or_eof(input);
+        Ok((input, (s, false)))
+    } else if input.starts_with("\n") {
+        let input = input.advance(1);
+        Ok((input, ("\n", false)))
     } else {
         Err(Reject)
     }
